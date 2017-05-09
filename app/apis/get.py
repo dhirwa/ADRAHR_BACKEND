@@ -36,6 +36,12 @@ def get_emps():
     result = emps_schema.dump(emps).data
     return jsonify({'Employees':result})
 
+#====================================== GET API FOR DONORS =========================
+@app.route('/adra/getdonors')
+def get_donors():
+    emps = Donor.query.all()
+    result = donors_schema.dump(emps).data
+    return jsonify(result)
 #====================================GET API TO GET EMPLOYEES AND THEIR PROJECTS AND POSITIONS===========================================================
 @app.route('/adra/allemployees')
 def get_emS():
@@ -89,6 +95,19 @@ def get_payone(empid):
         return jsonify({'No Payroll'})
 
 
+#---------------------- Project Select ----------------------
+@app.route('/adra/getprojects')
+def get_p():
+    emps = Project.query.all()
+    result = projs_schema.dump(emps).data
+    return jsonify(result)
+
+#=========================List of Fundings======================
+@app.route('/adra/fundings')
+def get_fun():
+    emps = Funding.query.all()
+    result = s_schema.dump(emps).data
+    return jsonify(result)
 
 
 #---------------------- List of All Projects ---------------------
@@ -101,6 +120,13 @@ def get_projs():
         json_data = projs_schema.dump(projs).data
         result = getprojs(json_data)
         return jsonify(result)
+
+#--------------------- LOCATIONS ----------------------------------
+@app.route('/adra/projects/location/<int:pid>')
+def get_loca(pid):
+    emps = Project_loc.query.filter_by(project_id = pid).all()
+    result = projlocs_schema.dump(emps).data
+    return jsonify(result)
 
 #---------------------- LEAVE PAGES -------------------------------
 @app.route('/adra/leaves/<int:empid>')
@@ -138,7 +164,7 @@ def get_sal(empid):
 #------------------------ EMPLOYMENT CERTIFICATE --------------------
 @app.route('/adra/employee/employment/<int:empid>')
 def get_empl(empid):
-    empl = Payroll.query.filter_by(emp_id = empid).filter_by(status = 0).order_by(Payroll.status.desc()).first()
+    empl = Payroll.query.filter_by(emp_id = empid).filter_by(status = 1).order_by(Payroll.status.desc()).first()
     if empl is None:
         return jsonify({'No records'})
     else:
@@ -160,7 +186,7 @@ def get_leaving(empid):
 #------------------------- FINAL PAY ------------------------------------
 @app.route('/adra/employee/finalpay/<int:empid>')
 def get_final(empid):
-    emps= Payroll.query.filter_by(emp_id = empid).filter_by(salary=200000).all()
+    emps= Payroll.query.filter_by(emp_id = empid).all()
     if emps is None:
         return jsonify({'No records'})
     else:
@@ -169,20 +195,20 @@ def get_final(empid):
         return jsonify(result)
 
 #----------------------- EMPLOYEE EDITING -----------------------
-@app.route('/employee/edit/<int:empid>/', methods=['POST'])
+@app.route('/adra/employee/edit/<int:empid>/', methods=['POST'])
 def edit(empid):
     first_name=request.get_json()["first_name"]
     last_name=request.get_json()["last_name"]
     education = request.get_json()["education"]
     address = request.get_json()["address"]
     telephone = request.get_json()["telephone"]
-    project_id = request.get_json()["project_id"]
-    position = request.get_json()["position"]
-    salary = request.get_json()["salary"]
-    staff_location = request.get_json()["staff_location"]
-    active_time = request.get_json()["active_time"]
-    inactive_time = request.get_json()["inactive_time"]
-    reason = request.get_json()["reason"]
+    # project_id = request.get_json()["project_id"]
+    # position = request.get_json()["position"]
+    # salary = request.get_json()["salary"]
+    # staff_location = request.get_json()["staff_location"]
+    # active_time = request.get_json()["active_time"]
+    # inactive_time = request.get_json()["inactive_time"]
+    # reason = request.get_json()["reason"]
 
     emp = Employee.query.filter_by(id=empid).first()
     pay = Payroll.query.filter_by(emp_id = empid).filter_by(status=1).first()
@@ -192,22 +218,22 @@ def edit(empid):
         emp.education = education
         emp.address = address
         emp.telephone = telephone
-        pay.inactive_time = inactive_time
-        pay.status = 0
-        payroll = Payroll(
-            emp_id=empid,
-            project_id=project_id,
-            position = position,
-            salary = salary,
-            staff_location= staff_location,
-            status = 1,
-            active_time = active_time,
-            inactive_time = None,
-            reason = reason,
-            regDate = None
-        )
+        # pay.inactive_time = inactive_time
+        # pay.status = 0
+        # payroll = Payroll(
+        #     emp_id=empid,
+        #     project_id=project_id,
+        #     position = position,
+        #     salary = salary,
+        #     staff_location= staff_location,
+        #     status = 1,
+        #     active_time = active_time,
+        #     inactive_time = None,
+        #     reason = reason,
+        #     regDate = None
+        # )
 
-        db.session.add(payroll)
+        # db.session.add(payroll)
         db.session.commit()
         return jsonify({'Message':'Edited'})
     except:

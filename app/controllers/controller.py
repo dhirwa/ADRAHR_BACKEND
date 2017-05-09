@@ -74,7 +74,7 @@ def getall(json_data,empid):
         else:
             et.append({'Period':period,'Project':jnam,'Position':k['position'],'Salary':k['salary']})
     history = et
-    output['Employee'].append({'names':names,'dob':d110,'id_type':id_type,'id_number':id_number,'telephone':tel,'education':educ,'address':addr,'nationality':nat,'dependants':dependants,'contacts':emergency,'historic': history,'projectid':json_data['project_id'],'projectname':projname,'position':json_data['position']})
+    output['Employee'].append({'first':first,'last':last,'names':names,'dob':d110,'id_type':id_type,'id_number':id_number,'telephone':tel,'education':educ,'address':addr,'nationality':nat,'dependants':dependants,'contacts':emergency,'historic': history,'projectid':json_data['project_id'],'projectname':projname,'position':json_data['position'],'salary':json_data['salary'],'location':json_data['staff_location']})
     return output
 
 
@@ -172,6 +172,9 @@ def getLeaves(json_data):
 #-------------------------- SALARY CERTIFICATE ----------------------
 def getsala(json_data,empid):
     output={'Salary':[]}
+    ot = []
+    at = []
+    et = []
     med = 50000
     ar = 1500
     advance = 0
@@ -223,35 +226,104 @@ def getsala(json_data,empid):
     d01=d10.strftime('%B %d, %Y')
     d1=datetime.datetime.strptime(str(json_data['active_time']), '%Y-%m-%dT%H:%M:%S')
     d11=d1.strftime('%B,%Y')
-    output['Salary'].append({'gen':gen,'der':der,'datenow':d01,'since':d11,'names':names,'position':json_data['position'],'inwords':ab,'innumbers':sal})
+    res = Employee.query.get(empid)
+    first = res.first_name
+    last = res.last_name
+    names = first+' '+last
+    dob = res.dob
+    d100=datetime.datetime.strptime(str(dob), '%Y-%m-%d %H:%M:%S')
+    d110=d100.strftime('%d-%m-%Y')
+    id_type = res.id_type
+    id_number = res.id_number
+    tel = res.telephone
+    educ = res.education
+    addr = res.address
+    nat = res.nationality
+    dep = Emp_dependant.query.filter_by(emp_id = empid).all()
+    d = empdeps_schema.dump(dep).data
+    for i in d:
+        d1=datetime.datetime.strptime(str(i['dob']), '%Y-%m-%dT%H:%M:%S')
+        d11=d1.strftime('%d-%m-%Y')
+        ot.append({'names':i['names'],'relation':i['relation'],'dob':d11})
+    dependants = ot
+    emer = Emp_emergency.query.filter_by(emp_id = empid).all()
+    e = empemers_schema.dump(emer).data
+    for j in e:
+        at.append({'names':j['names'],'relation':j['relation'],'number':j['number']})
+    emergency = at
+    resu = Project.query.get(json_data['project_id'])
+    projname = resu.name
+    hist = Payroll.query.filter_by(emp_id = empid).all()
+    h = payrolls_schema.dump(hist).data
+    for k in h:
+        pj = Project.query.get(k['project_id'])
+        jnam = pj.name
+        d0=datetime.datetime.strptime(str(k['active_time']), '%Y-%m-%dT%H:%M:%S')
+        if k['inactive_time'] is None:
+            pass
+        else:
+            d1=datetime.datetime.strptime(str(k['inactive_time']), '%Y-%m-%dT%H:%M:%S')
+            d11=d1.strftime('%B, %Y')
+            d01=d0.strftime('%B, %Y')
+            period = str(d01)+' - '+str(d11)
+        if int(k['status'])!=0:
+            pass
+        else:
+            et.append({'Period':period,'Project':jnam,'Position':k['position'],'Salary':k['salary']})
+    history = et
+    output['Salary'].append({'gen':gen,'der':der,'datenow':d01,'since':d11,'names':names,'position':json_data['position'],'inwords':ab,'innumbers':sal,'names':names,'dob':d110,'id_type':id_type,'id_number':id_number,'telephone':tel,'education':educ,'address':addr,'nationality':nat,'dependants':dependants,'contacts':emergency,'projectid':json_data['project_id'],'projectname':projname})
     return output
 
 #--------------------------- EMPLOYMENT CERTIFICATE ------------------------------
 def getemployment(json_data,empid):
     output={'Employment':[]}
+    ot = []
+    at = []
     ps=[]
-    res = Employee.query.get(empid)
-    first = res.first_name
-    last = res.last_name
     dnow = datetime.datetime.utcnow()
     d10= datetime.datetime.strptime(str(dnow), '%Y-%m-%d %H:%M:%S.%f')
     d01=d10.strftime('%B %d, %Y')
-    names = str(first)+' '+str(last)
     pays = Payroll.query.filter_by(emp_id=empid).filter_by(status = 1).first()
     curr_pos = pays.position
     d1=datetime.datetime.strptime(str(json_data['active_time']), '%Y-%m-%dT%H:%M:%S')
     d11=d1.strftime('%B,%Y')
-    output['Employment'].append({'datenow':d01,'names':names,'since':d11,'position':curr_pos})
+    res = Employee.query.get(empid)
+    first = res.first_name
+    last = res.last_name
+    names = first+' '+last
+    dob = res.dob
+    d100=datetime.datetime.strptime(str(dob), '%Y-%m-%d %H:%M:%S')
+    d110=d100.strftime('%d-%m-%Y')
+    id_type = res.id_type
+    id_number = res.id_number
+    tel = res.telephone
+    educ = res.education
+    addr = res.address
+    nat = res.nationality
+    dep = Emp_dependant.query.filter_by(emp_id = empid).all()
+    d = empdeps_schema.dump(dep).data
+    for i in d:
+        d1=datetime.datetime.strptime(str(i['dob']), '%Y-%m-%dT%H:%M:%S')
+        d11=d1.strftime('%d-%m-%Y')
+        ot.append({'names':i['names'],'relation':i['relation'],'dob':d11})
+    dependants = ot
+    emer = Emp_emergency.query.filter_by(emp_id = empid).all()
+    e = empemers_schema.dump(emer).data
+    for j in e:
+        at.append({'names':j['names'],'relation':j['relation'],'number':j['number']})
+    emergency = at
+    resu = Project.query.get(json_data['project_id'])
+    projname = resu.name
+    hist = Payroll.query.filter_by(emp_id = empid).all()
+    output['Employment'].append({'datenow':d01,'names':names,'since':d11,'position':curr_pos,'dob':d110,'id_type':id_type,'id_number':id_number,'telephone':tel,'education':educ,'address':addr,'nationality':nat,'dependants':dependants,'contacts':emergency,'projectid':json_data['project_id'],'projectname':projname})
     return output
 
 #---------------------------- LEAVING CERTIFICATE ------------------------------------
 def getleaving(json_data,empid):
     output = {'Leaving':[]}
+    ot = []
+    at = []
     et=[]
-    res = Employee.query.get(empid)
-    first = res.first_name
-    last = res.last_name
-    names = str(first)+' '+str(last)
     hist = Payroll.query.filter_by(emp_id = empid).all()
     h = payrolls_schema.dump(hist).data
     ii=1
@@ -265,8 +337,8 @@ def getleaving(json_data,empid):
         if k['inactive_time'] is None:
             pass
         else:
-            d1=datetime.datetime.strptime(str(k['inactive_time']), '%Y-%m-%dT%H:%M:%S')
-        d11=d1.strftime('%B, %Y')
+            d13=datetime.datetime.strptime(str(k['inactive_time']), '%Y-%m-%dT%H:%M:%S')
+        d11=d13.strftime('%B, %Y')
         d01=d0.strftime('%B, %Y')
         if int(k['status'])!=0:
             pass
@@ -277,7 +349,34 @@ def getleaving(json_data,empid):
             et.append({'no':iii,'Projects':worked})
             ii=ii+1
     history = et
-    output['Leaving'].append({'now':d101,'Names':names,'history':history})
+    res = Employee.query.get(empid)
+    first = res.first_name
+    last = res.last_name
+    names = first+' '+last
+    dob = res.dob
+    d100=datetime.datetime.strptime(str(dob), '%Y-%m-%d %H:%M:%S')
+    d110=d100.strftime('%d-%m-%Y')
+    id_type = res.id_type
+    id_number = res.id_number
+    tel = res.telephone
+    educ = res.education
+    addr = res.address
+    nat = res.nationality
+    dep = Emp_dependant.query.filter_by(emp_id = empid).all()
+    d = empdeps_schema.dump(dep).data
+    for i in d:
+        d12=datetime.datetime.strptime(str(i['dob']), '%Y-%m-%dT%H:%M:%S')
+        d11=d12.strftime('%d-%m-%Y')
+        ot.append({'names':i['names'],'relation':i['relation'],'dob':d11})
+    dependants = ot
+    emer = Emp_emergency.query.filter_by(emp_id = empid).all()
+    e = empemers_schema.dump(emer).data
+    for j in e:
+        at.append({'names':j['names'],'relation':j['relation'],'number':j['number']})
+    emergency = at
+    resu = Project.query.get(json_data['project_id'])
+    projname = resu.name
+    output['Leaving'].append({'now':d101,'Names':names,'history':history,'dob':d110,'id_type':id_type,'id_number':id_number,'telephone':tel,'education':educ,'address':addr,'nationality':nat,'dependants':dependants,'contacts':emergency,'projectid':json_data['project_id'],'projectname':projname,'position':json_data['position']})
     return output
 
 #----------------------------- PARTICULAR PAYROLL ---------------------------------
@@ -318,17 +417,42 @@ def getpayo(json_data,empid):
     gp = taxable + rssb
     td = tot_csr + tpr + advance
     net = gp - td
+    salary = int(net)
+    nets = str(salary)+' frw'
+    ot = []
+    at = []
+    et = []
+    #for item in json_data:
     res = Employee.query.get(empid)
     first = res.first_name
     last = res.last_name
-    names = str(first) +' '+str(last)
-    salary = int(net)
-    nets = str(salary)+' frw'
-    pj = Project.query.get(json_data['project_id'])
-    jnam = pj.name
+    names = first+' '+last
+    dob = res.dob
+    d100=datetime.datetime.strptime(str(dob), '%Y-%m-%d %H:%M:%S')
+    d110=d100.strftime('%d-%m-%Y')
+    id_type = res.id_type
+    id_number = res.id_number
+    tel = res.telephone
+    educ = res.education
+    addr = res.address
+    nat = res.nationality
+    dep = Emp_dependant.query.filter_by(emp_id = empid).all()
+    d = empdeps_schema.dump(dep).data
+    for i in d:
+        d1=datetime.datetime.strptime(str(i['dob']), '%Y-%m-%dT%H:%M:%S')
+        d11=d1.strftime('%d-%m-%Y')
+        ot.append({'names':i['names'],'relation':i['relation'],'dob':d11})
+    dependants = ot
+    emer = Emp_emergency.query.filter_by(emp_id = empid).all()
+    e = empemers_schema.dump(emer).data
+    for j in e:
+        at.append({'names':j['names'],'relation':j['relation'],'number':j['number']})
+    emergency = at
+    resu = Project.query.get(json_data['project_id'])
+    projname = resu.name
     p = inflect.engine()
     ab = p.number_to_words(salary)
-    output['Payslip'].append({'Names':names,'month':d01,'Project':jnam,'position':json_data['position'],'budgeted_salary':json_data['salary'],'Basic_salary':taxable,'severance':severance,'employer_rssb':rssb,'Gross_pay':gp,'csr':tot_csr,'tpr':tpr,'Advance':advance,'Total_Deductables':td,'Net_Salary':nets})
+    output['Payslip'].append({'Names':names,'month':d01,'budgeted_salary':json_data['salary'],'Basic_salary':taxable,'severance':severance,'employer_rssb':rssb,'Gross_pay':gp,'csr':tot_csr,'tpr':tpr,'Advance':advance,'Total_Deductables':td,'Net_Salary':nets,'dob':d110,'id_type':id_type,'id_number':id_number,'telephone':tel,'education':educ,'address':addr,'nationality':nat,'dependants':dependants,'contacts':emergency,'projectid':json_data['project_id'],'projectname':projname,'position':json_data['position']})
     return output
 
 
@@ -337,10 +461,36 @@ def finalpay(json_data,empid):
 
     output = {'FinalPay':[]}
     for item in json_data:
+        ot = []
+        at = []
+        et = []
         res = Employee.query.get(empid)
         first = res.first_name
         last = res.last_name
         names = str(first) + ' ' +str(last)
+        dob = res.dob
+        d100=datetime.datetime.strptime(str(dob), '%Y-%m-%d %H:%M:%S')
+        d110=d100.strftime('%d-%m-%Y')
+        id_type = res.id_type
+        id_number = res.id_number
+        tel = res.telephone
+        educ = res.education
+        addr = res.address
+        nat = res.nationality
+        dep = Emp_dependant.query.filter_by(emp_id = empid).all()
+        d = empdeps_schema.dump(dep).data
+        for i in d:
+            d1=datetime.datetime.strptime(str(i['dob']), '%Y-%m-%dT%H:%M:%S')
+            d11=d1.strftime('%d-%m-%Y')
+            ot.append({'names':i['names'],'relation':i['relation'],'dob':d11})
+        dependants = ot
+        emer = Emp_emergency.query.filter_by(emp_id = empid).all()
+        e = empemers_schema.dump(emer).data
+        for j in e:
+            at.append({'names':j['names'],'relation':j['relation'],'number':j['number']})
+        emergency = at
+        resu = Project.query.get(item['project_id'])
+        projname = resu.name
         start1=datetime.datetime.strptime(str(item['active_time']), '%Y-%m-%dT%H:%M:%S')
         if item['inactive_time'] is None:
             pass
@@ -402,5 +552,7 @@ def finalpay(json_data,empid):
             full['taxable']=taxable
             ww.append(full)
             i=i+1
-        output['FinalPay'].append({'Names':names,'Start':start1,'End':end1,'Budgeted_Salary':item['salary'],'Taxable':taxable,'Start_Year':y,'End_Year':z,'Taxable_1st_year':taxable1,'Taxable_full_years':taxable2,'Taxable_last_year':taxable3,'total_taxable':totalt,'tpr':tpr,'advance':advance,'Deductables':ded,'Net':net,'months_in_first':d1,'monthsin_btn':d3,'months_in_last':d2,'years':ww})
+
+
+        output['FinalPay'].append({'Names':names,'Start':start1,'End':end1,'Budgeted_Salary':item['salary'],'Taxable':taxable,'Start_Year':y,'End_Year':z,'Taxable_1st_year':taxable1,'Taxable_full_years':taxable2,'Taxable_last_year':taxable3,'total_taxable':totalt,'tpr':tpr,'advance':advance,'Deductables':ded,'Net':net,'months_in_first':d1,'monthsin_btn':d3,'months_in_last':d2,'years':ww,'dob':d110,'id_type':id_type,'id_number':id_number,'telephone':tel,'education':educ,'address':addr,'nationality':nat,'dependants':dependants,'contacts':emergency,'projectid':item['project_id'],'projectname':projname,'position':item['position']})
     return output

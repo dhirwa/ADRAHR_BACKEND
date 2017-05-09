@@ -4,7 +4,7 @@ from app.model.schema import *
 from flask import jsonify,request
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
-
+import datetime
 #========================== POST API FOR SIGN UP ======================
 @app.route('/adra/signup/', methods=['POST'])
 def add_user():
@@ -61,6 +61,95 @@ def login():
             return jsonify({'auth': 0})
     except AttributeError:
         return jsonify({'auth':2})
+#=========================== POST API FOR POSTING EMPLOYEE'S DETAILS,DEPENDANTS,CONTACTS AND PAYROLL,===================
+@app.route('/adra/addemployee/', methods=['POST'])
+def add_empall():
+    json_data = request.get_json()
+
+    if not json_data:
+        return jsonify({'message': 'No input data provided'}), 400
+
+    # data, errors = emp_schema.load(json_data)
+    #
+    # if errors:
+    #     return jsonify(errors), 422
+
+    try:
+        employee = Employee(
+            first_name=json_data['first_name'],
+            last_name=json_data['last_name'],
+            id_type = None,
+            id_number = json_data['id_number'],
+            telephone= json_data['telephone'],
+            email = json_data['email'],
+            dob = json_data['dob'],
+            gender = json_data['gender'],
+            education = json_data['education'],
+            address = json_data['address'],
+            status = None,
+            nationality = None,
+            cv_link = None,
+            nid_link = None,
+            contract = None,
+            regDate = None
+        )
+
+        db.session.add(employee)
+        db.session.commit()
+    except IntegrityError:
+        db.session().rollback()
+
+    emptel = Employee.query.filter_by(telephone = json_data["telephone"]).first()
+    empid = emptel.id
+    dnow = datetime.datetime.utcnow()
+    try:
+        payroll = Payroll(
+            emp_id=empid,
+            project_id=json_data['project_id'],
+            position = json_data['position'],
+            salary = json_data['salary'],
+            staff_location=json_data['staff_location'],
+            status = 1,
+            active_time = json_data['start'],
+            inactive_time = None,
+            reason = None,
+            regDate = None
+        )
+
+        db.session.add(payroll)
+        db.session.commit()
+
+    except IntegrityError:
+        db.session().rollback()
+
+    try:
+        emergency = Emp_emergency(
+            emp_id=empid,
+            names=json_data['emernames'],
+            relation=json_data['emerrelation'],
+            number=json_data['emernumber'],
+            regDate = None
+        )
+        db.session.add(emergency)
+        db.session.commit()
+
+    except IntegrityError:
+        db.session().rollback()
+
+    try:
+        dependant = Emp_dependant(
+            emp_id=empid,
+            names=json_data['depnames'],
+            relation=json_data['deprelation'],
+            dob=json_data['depdob'],
+            regDate = None
+        )
+        db.session.add(dependant)
+        db.session.commit()
+        return jsonify({"Message":"DONE!"})
+
+    except IntegrityError:
+        db.session().rollback()
 
 #=========================== POST API FOR RECORDING A NEW EMPLOYEE ============
 @app.route('/adra/employee/', methods=['POST'])
@@ -194,6 +283,56 @@ def add_project():
 
     except IntegrityError:
         return jsonify({'auth': 0})
+
+#========================== POST API FOR PROJECT, DONOR AND FUNDING ===========
+@app.route('/adra/addproject/', methods=['POST'])
+def add_everyproject():
+    json_data = request.get_json()
+
+    if not json_data:
+        return jsonify({'message': 'No input data provided'}), 400
+
+
+    try:
+        project = Project(
+            name=json_data['name'],
+            start_date=json_data['start_date'],
+            duration=json_data['duration'],
+            budget = json_data['budget'],
+            regDate = None
+        )
+        db.session.add(project)
+        db.session.commit()
+
+        proj = Project.query.filter_by(name=json_data['name']).first()
+        pid = proj.id
+    except IntegrityError:
+        db.session.rollback()
+
+    try:
+        fund = Funding(
+            project_id=pid,
+            donor_id=json_data['donor_id'],
+            regDate=None
+        )
+        db.session.add(fund)
+        db.session.commit()
+
+    except IntegrityError:
+        db.session.rollback()
+
+    try:
+        projloc = Project_loc(
+            project_id=pid,
+            location = json_data['location'],
+            regDate = None
+        )
+        db.session.add(projloc)
+        db.session.commit()
+        return jsonify({"Message":"Done"})
+
+    except IntegrityError:
+        db.session.rollback()
 
 #========================== POST API FOR RECORDING PROJECT EMPLOYEES ==========
 @app.route('/adra/project/donor/', methods=['POST'])
