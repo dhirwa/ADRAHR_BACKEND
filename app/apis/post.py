@@ -5,6 +5,13 @@ from flask import jsonify,request
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 import datetime
+from app.controllers.controller import *
+from werkzeug import secure_filename
+import string, time, math, random
+import os
+
+app.config['UPLOAD_FOLDER'] = '/tmp'
+app.config['ALLOWED_EXTENSIONS'] = set(['xlsx','xls','csv','png','pdf','doc','docx'])
 #========================== POST API FOR SIGN UP ======================
 @app.route('/adra/signup/', methods=['POST'])
 def add_user():
@@ -19,12 +26,12 @@ def add_user():
         return jsonify(errors), 422
 
     pwd_hash = bcrypt.generate_password_hash(data['password'])
-
+    username = get_username(data['email'])
     try:
         user = User(
             names=data['names'],
             email=data['email'],
-            username=data['email'],
+            username=username,
             password=pwd_hash,
         )
         db.session.add(user)
@@ -73,7 +80,8 @@ def add_empall():
     #
     # if errors:
     #     return jsonify(errors), 422
-
+    contacts = filter(None, json_data['contacts'])
+    # ======================== SAVE FROM HERE =================
     try:
         employee = Employee(
             first_name=json_data['first_name'],
@@ -81,26 +89,32 @@ def add_empall():
             id_type = None,
             id_number = json_data['id_number'],
             telephone= json_data['telephone'],
+            telephone2= json_data['telephone2'],
             email = json_data['email'],
+            email2 = json_data['email2'],
             dob = json_data['dob'],
             gender = json_data['gender'],
+            hobby = json_data['hobby'],
             education = json_data['education'],
             address = json_data['address'],
-            status = None,
+            status = 1,
             nationality = None,
             cv_link = None,
             nid_link = None,
             contract = None,
+            picture = None,
             regDate = None
         )
 
         db.session.add(employee)
         db.session.commit()
+        empid = employee.id
+
     except IntegrityError:
         db.session().rollback()
+        emptel = Employee.query.filter_by(telephone = json_data["telephone"]).first()
+        empid = emptel.id
 
-    emptel = Employee.query.filter_by(telephone = json_data["telephone"]).first()
-    empid = emptel.id
     dnow = datetime.datetime.utcnow()
     try:
         payroll = Payroll(
@@ -123,33 +137,74 @@ def add_empall():
         db.session().rollback()
 
     try:
-        emergency = Emp_emergency(
-            emp_id=empid,
-            names=json_data['emernames'],
-            relation=json_data['emerrelation'],
-            number=json_data['emernumber'],
-            regDate = None
-        )
-        db.session.add(emergency)
-        db.session.commit()
+        for item in json_data['dependants']:
+            dependant = Emp_dependant(
+                emp_id=empid,
+                names=item['name'],
+                relation=item['relation'],
+                dob=item['dob'],
+                regDate = None
+                )
+            db.session.add(dependant)
+            db.session.commit()
+
 
     except IntegrityError:
         db.session().rollback()
 
     try:
-        dependant = Emp_dependant(
-            emp_id=empid,
-            names=json_data['depnames'],
-            relation=json_data['deprelation'],
-            dob=json_data['depdob'],
-            regDate = None
-        )
-        db.session.add(dependant)
-        db.session.commit()
-        return jsonify({"Message":"DONE!"})
-
+        for item in contacts:
+            emergency = Emp_emergency(
+                emp_id=empid,
+                names=item['name'],
+                relation=item['relation'],
+                number=item['phone'],
+                regDate = None
+                )
+            db.session.add(emergency)
+            db.session.commit()
+        return jsonify(empid)
     except IntegrityError:
         db.session().rollback()
+#===============================UPLOADING =====================================
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1] in app.config['ALLOWED_EXTENSIONS']
+
+def uniqid(prefix='c-', more_entropy=False):
+    m = time.time()
+    uniqid = '%8x%05x' % (math.floor(m), (m - math.floor(m)) * 1000000)
+    if more_entropy:
+        valid_chars = list(set(string.hexdigits.lower()))
+        entropy_string = ''
+        for i in range(0, 10, 1):
+            entropy_string += random.choice(valid_chars)
+        uniqid = uniqid + entropy_string
+    uniqid = prefix + uniqid
+    return uniqid
+@app.route('/api/upload/test_adra/<int:empid>', methods=['POST','GET'])
+def upload_adra(empid):
+    files = [request.files['file'], request.files['file_1'], request.files['file_2'], request.files['file_3']]
+    dest = list()
+    for file in files:
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            tmp_filename = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(tmp_filename)
+
+            file_name,file_extension = os.path.splitext(tmp_filename)
+            re_filename = uniqid()+file_extension
+            destination = "/home/dieume/Documents/ADRA/uploads/new/"+re_filename
+            #destination = "/home/www/cartix/uploads/user/"+re_filename
+            os.rename(tmp_filename, destination)
+            dest.append(destination)
+    emp = Employee.query.get(empid)
+    emp.cv_link = dest[0]
+    emp.nid_link=dest[1]
+    emp.contract=dest[2]
+    emp.picture=dest[3]
+    db.session.commit()
+    return jsonify(dest)
 
 #=========================== POST API FOR RECORDING A NEW EMPLOYEE ============
 @app.route('/adra/employee/', methods=['POST'])
@@ -171,9 +226,12 @@ def add_emp():
             id_type = data['id_type'],
             id_number = data['id_number'],
             telephone= data['telephone'],
+            telephone2= data['telephone2'],
             email = data['email'],
+            email2 = data['email2'],
             dob = data['dob'],
             gender = data['gender'],
+            hobby = data['hobby'],
             education = data['education'],
             address = data['address'],
             status = data['status'],
@@ -270,9 +328,9 @@ def add_project():
     try:
         project = Project(
             name=data['name'],
+            donor = data['donor'],
             start_date=data['start_date'],
-            duration=data['duration'],
-            budget = data['budget'],
+            end_date=data['end_date'],
             regDate = None
         )
         db.session.add(project)
@@ -289,77 +347,55 @@ def add_project():
 def add_everyproject():
     json_data = request.get_json()
 
-    if not json_data:
-        return jsonify({'message': 'No input data provided'}), 400
-
-
+    # if not json_data:
+    #     return jsonify({'message': 'No input data provided'}), 400
+    #
+    #
     try:
         project = Project(
             name=json_data['name'],
+            donor=json_data['donor'],
             start_date=json_data['start_date'],
-            duration=json_data['duration'],
-            budget = json_data['budget'],
+            end_date=json_data['end_date'],
+            status = 1,
             regDate = None
         )
         db.session.add(project)
         db.session.commit()
+        pid = project.id
 
+    except IntegrityError:
+        db.session.rollback()
         proj = Project.query.filter_by(name=json_data['name']).first()
         pid = proj.id
-    except IntegrityError:
-        db.session.rollback()
+
+    # try:
+    #     fund = Funding(
+    #         project_id=pid,
+    #         donor_id=json_data['donor_id'],
+    #         regDate=None
+    #     )
+    #     db.session.add(fund)
+    #     db.session.commit()
+    #
+    # except IntegrityError:
+    #     db.session.rollback()
 
     try:
-        fund = Funding(
-            project_id=pid,
-            donor_id=json_data['donor_id'],
-            regDate=None
-        )
-        db.session.add(fund)
-        db.session.commit()
-
-    except IntegrityError:
-        db.session.rollback()
-
-    try:
-        projloc = Project_loc(
-            project_id=pid,
-            location = json_data['location'],
-            regDate = None
-        )
-        db.session.add(projloc)
-        db.session.commit()
+        for item in json_data['locations']:
+            projloc = Project_loc(
+                project_id=pid,
+                location = item['location'],
+                regDate = None
+                )
+            db.session.add(projloc)
+            db.session.commit()
         return jsonify({"Message":"Done"})
 
     except IntegrityError:
         db.session.rollback()
+    return json_data
 
-#========================== POST API FOR RECORDING PROJECT EMPLOYEES ==========
-@app.route('/adra/project/donor/', methods=['POST'])
-def add_donor():
-    json_data = request.get_json()
-
-    if not json_data:
-        return jsonify({'message': 'No input data provided'}), 400
-
-    data, errors = donor_schema.load(json_data)
-
-    if errors:
-        return jsonify(errors), 422
-
-    try:
-        donor = Donor(
-            name=data['name'],
-            regDate=None
-        )
-        db.session.add(donor)
-        db.session.commit()
-
-        don = donor_schema.dump(Donor.query.get(donor.id)).data
-        return jsonify({'auth':1, 'Donor':don})
-
-    except IntegrityError:
-        return jsonify({'auth': 0})
 
 #========================= POST API FOR RECORDING PROJECT LOCATIONS ===========
 @app.route('/adra/project/locations/', methods=['POST'])
@@ -389,34 +425,6 @@ def add_location():
     except IntegrityError:
         return jsonify({'auth': 0})
 
-
-#=============================== POST API FOR TERMINATED CONTRACTS ============
-@app.route('/adra/project/funding/', methods=['POST'])
-def add_funding():
-    json_data = request.get_json()
-
-    if not json_data:
-        return jsonify({'message': 'No input data provided'}), 400
-
-    data, errors = fund_schema.load(json_data)
-
-    if errors:
-        return jsonify(errors), 422
-
-    try:
-        fund = Funding(
-            project_id=data['project_id'],
-            donor_id=data['donor_id'],
-            regDate=None
-        )
-        db.session.add(fund)
-        db.session.commit()
-
-        fu = fund_schema.dump(Funding.query.get(fund.id)).data
-        return jsonify({'auth':1, 'Funding':fu})
-
-    except IntegrityError:
-        return jsonify({'auth': 0})
 
 #=================================== POST API FOR PAYROLL ======================
 @app.route('/adra/payroll/', methods=['POST'])
@@ -501,7 +509,7 @@ def add_vacation():
     try:
         vaca = Vacation(
             vac_type=data['vac_type'],
-            duration = data['duration'],
+            duration = None,
             regDate = None
         )
 
@@ -529,12 +537,14 @@ def add_leave():
 
     try:
         leav = Leave(
-            emp_id=data['emp_id'],
-            vacation_id = data['vacation_id'],
-            start_date = data['start_date'],
-            end_date = data['end_date'],
-            reason = data['reason'],
-            regDate = None
+        emp_id=data['emp_id'],
+        vacation_id = data['vacation_id'],
+        start_date = data['start_date'],
+        end_date = data['end_date'],
+        reason = data['reason'],
+        address = data['address'],
+        status = 1,
+        regDate = None
         )
 
         db.session.add(leav)
@@ -542,6 +552,100 @@ def add_leave():
 
         le = leave_schema.dump(Leave.query.get(leav.id)).data
         return jsonify({'auth':1, 'Leave':le})
+
+    except IntegrityError:
+        return jsonify({'auth': 0})
+
+
+#========================== POST API FOR RECORDING PROJECT EMPLOYEES ==========
+# @app.route('/adra/project/donor/', methods=['POST'])
+# def add_donor():
+#     json_data = request.get_json()
+#
+#     if not json_data:
+#         return jsonify({'message': 'No input data provided'}), 400
+#
+#     data, errors = donor_schema.load(json_data)
+#
+#     if errors:
+#         return jsonify(errors), 422
+#
+#     try:
+#         donor = Donor(
+#             name=data['name'],
+#             regDate=None
+#         )
+#         db.session.add(donor)
+#         db.session.commit()
+#
+#         don = donor_schema.dump(Donor.query.get(donor.id)).data
+#         return jsonify({'auth':1, 'Donor':don})
+#
+#     except IntegrityError:
+#         return jsonify({'auth': 0})
+
+#=============================== POST API FOR TERMINATED CONTRACTS ============
+# @app.route('/adra/project/funding/', methods=['POST'])
+# def add_funding():
+#     json_data = request.get_json()
+#
+#     if not json_data:
+#         return jsonify({'message': 'No input data provided'}), 400
+#
+#     data, errors = fund_schema.load(json_data)
+#
+#     if errors:
+#         return jsonify(errors), 422
+#
+#     try:
+#         fund = Funding(
+#             project_id=data['project_id'],
+#             donor_id=data['donor_id'],
+#             regDate=None
+#         )
+#         db.session.add(fund)
+#         db.session.commit()
+#
+#         fu = fund_schema.dump(Funding.query.get(fund.id)).data
+#         return jsonify({'auth':1, 'Funding':fu})
+#
+#     except IntegrityError:
+#         return jsonify({'auth': 0})
+
+#================================ TERMINATE ==========================
+@app.route('/adra/employee/terminate/', methods=['POST'])
+def terminate():
+
+    json_data = request.get_json()
+
+    if not json_data:
+        return jsonify({'message': 'No input data provided'}), 400
+
+    data, errors = term_schema.load(json_data)
+
+    if errors:
+        return jsonify(errors), 422
+
+    try:
+        term = Terminated(
+        emp_id=data['emp_id'],
+        end_date = data['end_date'],
+        reason = data['reason'],
+        comment = data['comment'],
+        regDate = None
+        )
+
+
+        em = Employee.query.get(data['emp_id'])
+        em.status = 0
+        pay = Payroll.query.filter_by(emp_id = data['emp_id']).filter_by(status=1).first()
+        pay.status = 0
+        pay.inactive_time = data['end_date']
+        db.session.add(term)
+        db.session.commit()
+
+        le = term_schema.dump(Terminated.query.get(term.id)).data
+        return jsonify({'auth':1, 'Terminated':le})
 
     except IntegrityError:
         return jsonify({'auth': 0})
