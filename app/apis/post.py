@@ -98,6 +98,7 @@ def add_empall():
             education = json_data['education'],
             address = json_data['address'],
             status = 1,
+            startdate = json_data['start'],
             nationality = None,
             cv_link = None,
             nid_link = None,

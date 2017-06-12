@@ -53,7 +53,7 @@ def get_emS():
 def get_allter():
     emps= Terminated.query.all()
     if emps is None:
-        return jsonify({'No records!'})
+        return jsonify({'Message':'No records!'})
     else:
         json_data = terms_schema.dump(emps).data
         result = getalltermi(json_data)
@@ -70,10 +70,33 @@ def get_em(empid):
         result = getall(json_data,empid)
         return jsonify(result)
 
+#=============================== GET API TO GET AN EMPLOYEE DETAILS  AND HISTORIC =============================
+@app.route('/adra/employee/profileterm/<int:empid>')
+def get_emplo(empid):
+    emps= Payroll.query.filter_by(emp_id = empid).filter_by(status=0).first()
+    if emps is None:
+        return jsonify({'No records'})
+    else:
+        json_data = payroll_schema.dump(emps).data
+        result = getallterm(json_data,empid)
+        return jsonify(result)
+
+#=============================== GET API TO GET AN EMPLOYEE DETAILS  AND HISTORIC =============================
+@app.route('/adra/employee/history/<int:empid>')
+def get_hist(empid):
+    emps= Payroll.query.filter_by(emp_id = empid).filter_by(status=0).first()
+    if emps is None:
+        return jsonify({'No records'})
+    else:
+        json_data = payroll_schema.dump(emps).data
+        result = getallhist(json_data,empid)
+        return jsonify(result)
+
+
 #================================== GET API FOR THE WHOLE PAYROLL LIST====================================
 @app.route('/adra/getpayroll')
 def get_pays():
-    pays = Payroll.query.all()
+    pays = Payroll.query.filter_by(emp_id=17).all()
     result = payrolls_schema.dump(pays).data
     return jsonify({'Payroll':result})
 
@@ -92,10 +115,20 @@ def get_allpays():
 #====================== Particular Payroll =====================
 @app.route('/adra/payroll/<int:empid>')
 def get_payone(empid):
-    apy = Payroll.query.filter_by(emp_id=empid).filter_by(status=1).first()
+    apy = Payroll.query.filter_by(emp_id=empid).first()
     if apy:
         json_data = payroll_schema.dump(apy).data
         result= getpayo(json_data,empid)
+        return jsonify(result)
+    else:
+        return jsonify({'No Payroll'})
+#====================== Particular Payroll =====================
+@app.route('/adra/onepayroll/<int:empid>')
+def get_payon(empid):
+    apy = Payroll.query.filter_by(emp_id=empid).all()
+    if apy:
+        json_data = payrolls_schema.dump(apy).data
+        result = finalpayo(json_data,empid)
         return jsonify(result)
     else:
         return jsonify({'No Payroll'})
@@ -280,6 +313,28 @@ def edit(empid):
     address = request.get_json()["address"]
     telephone = request.get_json()["telephone"]
     telephone2 = request.get_json()["telephone2"]
+    email = request.get_json()["email"]
+    email2 = request.get_json()["email2"]
+    # reason = request.get_json()["reason"]
+
+    emp = Employee.query.filter_by(id=empid).first()
+    try:
+        emp.first_name=first_name
+        emp.last_name = last_name
+        emp.education = education
+        emp.address = address
+        emp.telephone = telephone
+        emp.telephone2 = telephone2
+        emp.email = email
+        emp.email2 = email2
+        db.session.commit()
+        return jsonify({'Message':'Edited'})
+    except:
+        return jsonify({'Message':'0'})
+
+#==================================================================================
+@app.route('/adra/employee/editjob/<int:empid>/', methods=['POST'])
+def editjob(empid):
     project_id = request.get_json()["project_id"]
     position = request.get_json()["position"]
     salary = request.get_json()["salary"]
@@ -288,15 +343,8 @@ def edit(empid):
     inactive_time = request.get_json()["active_time"]
     # reason = request.get_json()["reason"]
 
-    emp = Employee.query.filter_by(id=empid).first()
     pay = Payroll.query.filter_by(emp_id = empid).filter_by(status=1).first()
     try:
-        emp.first_name=first_name
-        emp.last_name = last_name
-        emp.education = education
-        emp.address = address
-        emp.telephone = telephone
-        emp.telephone2 = telephone2
         pay.inactive_time = inactive_time
         pay.status = 0
         payroll = Payroll(
@@ -307,7 +355,7 @@ def edit(empid):
             staff_location= staff_location,
             status = 1,
             active_time = active_time,
-            inactive_time = inactive_time,
+            inactive_time = None,
             reason = None,
             regDate = None
         )

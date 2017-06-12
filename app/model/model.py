@@ -34,6 +34,7 @@ class Employee(db.Model):
     education = db.Column(db.String(100))
     address = db.Column(db.String(100))
     status = db.Column(db.Integer)
+    startdate = db.Column(db.DateTime)
     nationality = db.Column(db.String(50))
     cv_link = db.Column(db.String(200))
     nid_link = db.Column(db.String(200))
@@ -45,7 +46,7 @@ class Employee(db.Model):
     payroll = db.relationship('Payroll', backref='employee',lazy='dynamic')
     leave = db.relationship('Leave', backref = 'employee', lazy = 'dynamic')
 
-    def __init__(self, first_name, last_name, id_type, id_number, telephone, telephone2, email, email2,dob, gender, hobby,education, address,  status, nationality, cv_link, nid_link, contract, picture, regDate= None):
+    def __init__(self, first_name, last_name, id_type, id_number, telephone, telephone2, email, email2,dob, gender, hobby,education, address,  status, startdate,nationality, cv_link, nid_link, contract, picture, regDate= None):
 
         self.first_name = first_name
         self.last_name = last_name
@@ -61,6 +62,7 @@ class Employee(db.Model):
         self.education = education
         self.address = address
         self.status = status
+        self.startdate = startdate
         self.nationality = nationality
         self.cv_link = cv_link
         self.nid_link = nid_link
